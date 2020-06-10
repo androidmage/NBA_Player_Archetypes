@@ -1,4 +1,4 @@
-# %%scraper player information from 13-14 season to 20-21 season
+# %%scraper player information from 13-14 season to 18-19 season
 
 # Import relevant libraries
 from requests import get
@@ -8,8 +8,9 @@ from basketball_reference_web_scraper.data import OutputType
 import pandas as pd
 
 # player season totals has 21 features and advanced has 27 features
+failed_scrapes = []
 # Get season stats for all players
-for year in range(2019, 2020):
+for year in range(2015, 2019):
     print(year)
     # client.players_season_totals(season_end_year=year,
     #                              output_type=OutputType.CSV,
@@ -26,7 +27,7 @@ for year in range(2019, 2020):
     totals = pd.concat([season, advanced], axis=1, sort=False)
 
     # remove players with less than 1000 minutes
-    totals = totals[totals.minutes_played > 1000]
+    totals = totals[totals.minutes_played > 500]
     
     # remove duplicate players by keeping most minutes played
     max_minutes = totals.groupby('slug').minutes_played.transform(max)
@@ -60,7 +61,6 @@ for year in range(2019, 2020):
             season = str(year-1) + '-' + str(year)[2:4]
             per_game = per_game.loc[season]
             if type(per_game) is pd.DataFrame:
-                # print(per_game)
                 for index, row in per_game.iterrows():
                     exp_played = totals.loc[slug, 'games_played']
                     exp_started = totals.loc[slug, 'games_started']
@@ -84,24 +84,29 @@ for year in range(2019, 2020):
             
 
         # scrape shot charts
+        shotChart = pd.DataFrame()
         r = get(url + last_initial + '/' + slug + '/shooting/' + str(year))
         if r.status_code==200:
             soup = BeautifulSoup(r.content, 'html.parser')
-            table = soup.find('table')
-            shooting = pd.read_html(str(table))[0]
+            table = soup.findAll('table')
+            if len(table) > 0:
+                shooting = pd.read_html(str(table[0]))[0]
+                
+                # get stats from each range
+                for row in range(9, 18):
+                    sRange = shooting.iloc[row, 1]
+                    if sRange in shooting_ranges:
+                        shots = shooting.iloc[row, shooting_indices]
+                        shots.index = [sRange+' '+name for name in shooting_columns]
+                        shots = pd.DataFrame(shots).transpose()
+                        shots.index = [slug]
+                        shotChart = pd.concat([shotChart, shots], axis=1, sort=False)
+                shotCharts = pd.concat([shotCharts, shotChart])
             
-            # get stats from each range
-            shotChart = pd.DataFrame()
-            for row in range(9, 18):
-                sRange = shooting.iloc[row, 1]
-                if sRange in shooting_ranges:
-                    shots = shooting.iloc[row, shooting_indices]
-                    shots.index = [sRange+' '+name for name in shooting_columns]
-                    shots = pd.DataFrame(shots).transpose()
-                    shots.index = [slug]
-                    shotChart = pd.concat([shotChart, shots], axis=1, sort=False)
-
-            shotCharts = pd.concat([shotCharts, shotChart])
+            else:
+                failed_scrapes.append(slug + ' ' + str(year))
+                shotCharts = shotCharts.append(pd.Series(name=slug, dtype='float64'))
+            
 
     # set column names to show per game
     per_game_stats.columns = ['per game ' + name for name in per_game.columns]
@@ -110,3 +115,4 @@ for year in range(2019, 2020):
     totalData = pd.concat([totals, physical_stats, per_game_stats, shotCharts], axis=1, sort=False)
     totalData.to_csv('data/playerTotals' + str(year) + '.csv')
 
+print(failed_scrapes)
