@@ -21,11 +21,16 @@ imputer = SimpleImputer(missing_values=np.nan, strategy='constant', fill_value=0
 imputer.fit(X)
 X = imputer.transform(X)
 
-# #%% encode categorical data
-# from sklearn.compose import ColumnTransformer
-# from sklearn.preprocessing import OneHotEncoder
-# ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [0])], remainder='passthrough')
-# X = np.array(ct.fit_transform(X))
+
+#%% add shot selection stats
+df = pd.DataFrame(data=X, columns=df.columns)
+shooting_ranges = ['At Rim', '3 to <10 ft', '10 to <16 ft',
+                            '16 ft to <3-pt', '3-pt']
+playerFGA = pd.Series(np.zeros(len(df.index)))
+for shot in shooting_ranges:
+    playerFGA = playerFGA + df[shot + ' FGA']
+for shot in shooting_ranges:
+    df[shot + ' FGA%'] = df[shot + ' FGA'] / playerFGA
 
 #%% output combined player totals
 df.index = names
@@ -34,8 +39,9 @@ df.to_csv('data/combinedPlayerTotals.csv')
 #%% feature scaling
 from sklearn.preprocessing import StandardScaler
 sc = StandardScaler()
+X = df.values
 X = sc.fit_transform(X)
 
 #%% output aggregated player data
-df = pd.DataFrame(data=X, columns=df.columns)
+df = pd.DataFrame(data=X, columns=df.columns, index=names)
 df.to_csv('data/aggregatedData.csv', float_format='%.3f')

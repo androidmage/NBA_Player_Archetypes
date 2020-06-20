@@ -10,7 +10,7 @@ names = dataset.index
 
 #%% Applying PCA
 from sklearn.decomposition import PCA
-pc_num = 23
+pc_num = 24
 model = PCA(n_components = pc_num).fit(X)
 X_pc = model.transform(X)
 explained_variance = model.explained_variance_ratio_
