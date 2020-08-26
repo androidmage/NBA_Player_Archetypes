@@ -9,8 +9,6 @@ for year in range(2014, 2020):
     names += [name + ' ' + str(year) for name in yearDf['name']]
     df = pd.concat([df, yearDf], axis=0, ignore_index=True)
 
-#%% remove extraneous columns
-df.drop(['slug', 'positions', 'name', 'team'], axis=1, inplace=True)
 X = df.values
 
 #%% fill in blank columns
@@ -31,6 +29,12 @@ for shot in shooting_ranges:
     playerFGA = playerFGA + df[shot + ' FGA']
 for shot in shooting_ranges:
     df[shot + ' FGA%'] = df[shot + ' FGA'] / playerFGA
+
+#%% save complete player totals
+df.to_csv('data/completePlayerTotals.csv')
+
+#%% remove extraneous columns
+df.drop(['slug', 'positions', 'name', 'team'], axis=1, inplace=True)
 
 #%% output combined player totals
 df.index = names
